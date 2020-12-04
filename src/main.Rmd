@@ -1,18 +1,52 @@
 ---
-title: "R Notebook"
+title: "Taller Business Checkins"
+author: "Manuel Alejandro Castaño Jaramillo"
+date: "4/12/2020"
 output: html_notebook
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+# Introducción
+Analizaremos los datos proveidos por la plataforma **Yelp** sobre el número de entradas a restaurantes de Pittsburgh para entrenar un modelo de aprendizaje automático que predice el nivel de carga de trabajo de cualquier restaurante de pittsburgh en un día y hora específicos.
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+## Importando Librerías y Datos
 
 ```{r}
-plot(cars)
+## libraries
+# the fastdummies library for the one hot encoding process
+library(fastDummies)
+# the janitor library to clean the column heading of the dataframes
+library(janitor)
+# the ggplot2 library for creating plots
+library(ggplot2)
+# reshape2 to melt the correlation matrix
+library(reshape2)
+
+# importing business checkin data from yelp
+data = read.csv("../data/business_checkin.csv", header = TRUE, sep = ",")
+
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+# Descripción de los Datos
+El conjunto de datos cuenta con **16800** registros donde encontraremos ciertas características de algunos negocios en cada hora de cada día de la semana, de estos datos tan solo **1512** son registros de negocios con la categoría de restaurante y en las horas en que se encontraban abiertos.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+Los datos cuentan con las siguientes variables:
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+* **rownumber**: El índice del registro en la base de datos.
+* **business_id**: El identificador del negocio.
+* **city**: La ciudad en la que se encuentra el negocio.
+* **stars**: Las estrellas con las que contaba el negocio al momento de hacer la medición.
+* **review_count**: El número de reviews con las que contaba el negocio al momento de hacer la medición.
+* **is_open**: Si el negocio estaba abierto en el momento que se hizo la medición.
+* **category**: La categoría con la cual se identifica el negocio.
+* **day_time**: El día de la semana y la hora en que se hizo la medición.
+* **week_way**: El día de la semana en que se hizo la medición.
+* **hourofday**: La hora en que se hizo la medición.
+* **checkins**: La cantidad de entradas al negocio en el momento que se hizo la medición.
+
+```{r}
+# filtering the data by Restaurants category and by the city of Pittsburgh
+data_restaurants <- subset(data, category=="Restaurants" & is_open==TRUE)
+data_restaurants <- subset(data_restaurants, city=="Pittsburgh")
+
+head(data_restaurants)
+```
