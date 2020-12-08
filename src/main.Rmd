@@ -50,3 +50,110 @@ data_restaurants <- subset(data_restaurants, city=="Pittsburgh")
 
 head(data_restaurants)
 ```
+Se revolvieron los registros.
+```{r}
+# shuffle the dataframe
+data_restaurants <- data_restaurants[sample(nrow(data_restaurants)),]
+```
+
+## Visualización del Comportamiento de los Datos
+### Gráfico de la Frecuencia de los Checkins
+```{r}
+ggplot(
+  data=data_restaurants,
+  aes(x=checkins)
+) + geom_histogram()
+```
+
+### Gráfico del Número de Checkins por cada Día de la Semana
+```{r}
+ggplot(
+  data=data_restaurants,
+  aes(x=week_day, y=checkins)
+) + geom_bar(stat="identity")
+```
+
+### Gráfico del Número de Checkins por cada Hora del Día
+```{r}
+ggplot(
+  data=data_restaurants,
+  aes(x=hourofday, y=checkins)
+) + geom_bar(stat="identity")
+```
+
+## Limpiando las Variables no Deseadas
+
+Se eliminarán la siguientes varibales de dataset.
+
+* **rownumber**: Porque es el índice de la fila y no tiene nada que ver con el problema.
+* **business_id**: Porque se busca que el modelo prediga la carga laboral en general de los restaurantes de Pittsburgh y no de cada restaurante de forma específica, además si se buscara esto se contaría con muy pocos datos por cada negocio.
+* **city**: Porque la única cidad tratada en el problema es Pittsburgh
+* **is_open**: Porque en el único momento enq ue un restaurante debería tener entradas es en el momento que esté abierto, el resto se consideraron como errores en el momento de la medición de los datos.
+* **category**: Porque la única categoría tratada en el problema son los restaurantes.
+* **day_time**: Porque este es un dato redundante, su información ya la aportan las variables de "**week_day**" y "**hourofday**"
+
+```{r}
+data_restaurants$ï..rownumber <- NULL
+data_restaurants$day_time <- NULL
+data_restaurants$business_id <- NULL
+data_restaurants$is_open <- NULL
+data_restaurants$city <- NULL
+data_restaurants$category <- NULL
+head(data_restaurants)
+```
+
+## Combirtiendo Variables Categoricas en Variables "Dummy"
+
+Se crean variables ficticias para cada uno de los días de las semanas y se marcan con 1 la que corresponde con a el día del registro.
+```{r}
+data_restaurants <- dummy_cols(
+  data_restaurants, select_columns = c("week_day")
+)
+data_restaurants$week_day <- NULL
+
+## cleaning the column heading
+data_restaurants = clean_names(data_restaurants)
+head(data_restaurants)
+```
+## Correlación de los Datos
+```{r}
+cormat <- round(cor(data_restaurants), 2 )
+melted_cormat <- melt(cormat)
+
+# create a ggheatmap
+ggheatmap <- ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "red", high = "blue", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Pearson\nCorrelation") +
+  theme_minimal()+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1))+
+  coord_fixed()
+
+ggheatmap +
+  geom_text(aes(Var2, Var1, label = value), color = "black", size = 4) +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.border = element_blank(),
+    panel.background = element_blank(),
+    axis.ticks = element_blank(),
+    legend.justification = c(1, 0),
+    legend.position = c(1.5, 0.7),
+    legend.direction = "horizontal")+
+  guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
+                               title.position = "top", title.hjust = 0.5))
+```
+# test
+```{r}
+library(heatmaply)
+heatmaply(
+  data, 
+  xlab = "week_day",
+  ylab = "checkins", 
+  main = "Raw data"
+)
+```
+
