@@ -147,13 +147,3 @@ ggheatmap +
                                title.position = "top", title.hjust = 0.5))
 ```
 # test
-```{r}
-library(heatmaply)
-heatmaply(
-  data, 
-  xlab = "week_day",
-  ylab = "checkins", 
-  main = "Raw data"
-)
-```
-
