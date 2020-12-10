@@ -115,6 +115,7 @@ data_restaurants$week_day <- NULL
 data_restaurants = clean_names(data_restaurants)
 head(data_restaurants)
 ```
+
 ## Correlación de los Datos
 ```{r}
 cormat <- round(cor(data_restaurants), 2 )
@@ -146,4 +147,49 @@ ggheatmap +
   guides(fill = guide_colorbar(barwidth = 7, barheight = 1,
                                title.position = "top", title.hjust = 0.5))
 ```
-# test
+
+## Transformando Checkins a Categorías
+```{r}
+data_restaurants$checkins_cat <- cut(data_restaurants$checkins, breaks = c(0, 5, 10, Inf),
+                  labels = c("baja", "media", "alta"),
+                  right = FALSE)
+                  
+library(dplyr)
+
+ 
+# data_restaurants <- data.frame(data_restaurants %>% select(stars,review_count, hourofday, week_day_mon, week_day_tue, week_day_wed, week_day_thu, week_day_fri, week_day_sat, week_day_sun ,checkins, checkins_cat))
+
+# data_restaurants <- data.frame(data_restaurants %>% select(stars,review_count, hourofday, week_day, checkins, checkins_cat))
+
+# data_restaurants$checkins <- NULL
+```
+
+## test
+```{r}
+library(caret)
+featurePlot(x = data_restaurants[, 1:3], 
+            y = data_restaurants$checkins_cat, 
+            plot = "pairs",
+            auto.key = list(columns = 3))
+
+# library(WVPlots)
+# PairPlot(data_restaurants, colnames(data_restaurants)[1:4], "Datos restaurantes", group_var = "checkins_cat")
+```
+
+## proporción de las clases
+```{r}
+table(data_restaurants$checkins_cat)
+```
+
+## Resampling
+```{r}
+set.seed(1000) # puede que cambie por el tiempo
+
+# con oversampling
+up_dataset <- upSample(x = data_restaurants[, -ncol(data_restaurants)],
+                       y = data_restaurants$checkins_cat)
+up_dataset <- rename(up_dataset, c("checkins_cat" = "Class"))
+table(up_dataset$checkins_cat)
+
+```
+
