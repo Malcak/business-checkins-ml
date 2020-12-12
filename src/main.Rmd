@@ -213,7 +213,7 @@ confusion[["byClass"]]
 
 ### Área bajo la curva ROC
 ```{r}
-multiclass.roc(as.numeric(prediccion), as.numeric(data_test[["checkins_cat"]]))
+multiclass.roc(as.numeric(predictions_nb), as.numeric(data_test[["checkins_cat"]]))
 ```
 
 ## Decision Tree
