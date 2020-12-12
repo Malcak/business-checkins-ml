@@ -1,6 +1,6 @@
 ---
 title: "Taller Business Checkins"
-author: "Manuel Alejandro Castaño Jaramillo, davila, yajaira"
+author: "Manuel Alejandro Castaño Jaramillo, Sebastian Davila García, Yahaira Hoyos Barrantes"
 date: "4/12/2020"
 output:
   html_notebook:
@@ -9,24 +9,34 @@ output:
 ---
 
 # Introducción
-Analizaremos los datos proveidos por la plataforma **Yelp** sobre el número de entradas a restaurantes de Pittsburgh para entrenar un modelo de aprendizaje automático que predice el nivel de carga de trabajo de cualquier restaurante de pittsburgh en un día y hora específicos.
+Analizaremos los datos proveídos por la plataforma **Yelp** sobre el número de entradas a restaurantes de Pittsburgh para entrenar un modelo de aprendizaje automático que predice el nivel de carga de trabajo de cualquier restaurante de Pittsburgh en un día y hora específicos.
 
 ## Importando Librerías y Datos
 ```{r}
-## librerías
+### librerías
 
-# librerías para crear visualizaciones
+## librerías para crear visualizaciones
+#install.packages("ggplot2")
 library(ggplot2)
 
+## librerías para la gestión de las datos y los modelos
+#install.packages("dplyr")
 library(dplyr)
+#install.packages("pROC")
 library(pROC)
+#install.packages("tidyverse")
 library(tidyverse)
+#install.packages("caret")
 library(caret)
 
-# librería para los modelos de aprendizaje automático
+## librería para los modelos de aprendizaje automático
+#install.packages("naivebayes")
 library(naivebayes)
+#install.packages("randomForest")
 library(randomForest)
+#install.packages("rpart")
 library(rpart)
+#install.packages("rpart.plot")
 library(rpart.plot)
 
 # importing business checkin data from yelp
@@ -35,7 +45,7 @@ data = read.csv("../data/business_checkin.csv", header = TRUE, sep = ",")
 ```
 
 # Descripción de los Datos
-El conjunto de datos cuenta con **16800** registros donde encontraremos ciertas características de algunos negocios en cada hora de cada día de la semana, de estos datos tan solo **1512** son registros de negocios con la categoría de restaurante y en las horas en que se encontraban abiertos.
+El conjunto de datos cuenta con **16800** registros, donde encontraremos ciertas características de algunos negocios para cada una de las horas de cada día de la semana, de estos datos tan solo **1512** son registros de negocios con la categoría de restaurante de la ciudad Pittsburgh y en las horas en que se encontraban abiertos.
 
 Los datos cuentan con las siguientes variables:
 
@@ -66,7 +76,7 @@ glimpse(data_restaurants)
 ```
 En la tabla anterior puede verse el tipo de cada variable, así como un ejemplo de los valores que toma. La variable week_day y hourofday se convierten a tipo factor
 ```{r}
-# convitiendo los días de las semana y las horas del día en factores
+# convirtiendo los días de las semana y las horas del día en factores
 data_restaurants$week_day <- as.factor(data_restaurants$week_day)
 data_restaurants$hourofday <- as.factor(data_restaurants$hourofday)
 ```
@@ -88,8 +98,8 @@ Se eliminarán la siguientes variables de dataset.
 
 * **rownumber**: Porque es el índice de la fila y no tiene nada que ver con el problema.
 * **business_id**: Porque se busca que el modelo prediga la carga laboral en general de los restaurantes de Pittsburgh y no de cada restaurante de forma específica, además si se buscara esto se contaría con muy pocos datos por cada negocio.
-* **city**: Porque la única cuidad tratada en el problema es Pittsburgh
-* **is_open**: Porque en el único momento enq ue un restaurante debería tener entradas es en el momento que esté abierto, el resto se consideraron como errores en el momento de la medición de los datos.
+* **city**: Porque la única ciudad tratada en el problema es Pittsburgh
+* **is_open**: Porque en el único momento en que un restaurante debería tener entradas es en el momento que esté abierto, el resto se consideraron como errores en el momento de la medición de los datos.
 * **category**: Porque la única categoría tratada en el problema son los restaurantes.
 * **day_time**: Porque este es un dato redundante, su información ya la aportan las variables de "**week_day**" y "**hourofday**".
 
@@ -106,7 +116,7 @@ head(data_restaurants)
 
 ## Transformando Checkins a factores
 
-Tomaremos los casos donde se presentan de **0** a **4** checkins como casos donde hay baja carga laboral, de **5** a **9** como casos donde hay carga laboral media y de **10** en adelante como casos donde hay carga laboral alta
+Tomaremos los casos donde se presentan de **0** a **4** checkins como casos donde hay baja carga laboral, de **5** a **9** como casos donde hay carga laboral media y de **10** en adelante como casos donde hay carga laboral alta.
 ```{r}
 # se crea la columna checkins_cat con la categoría la que pertenece según su número de checkins
 data_restaurants$checkins_cat <- cut(data_restaurants$checkins, breaks = c(0, 5, 10, Inf),
@@ -115,13 +125,13 @@ data_restaurants$checkins_cat <- cut(data_restaurants$checkins, breaks = c(0, 5,
 # se reordenan las columnas del dataset
 data_restaurants <- data.frame(data_restaurants %>% select(stars,review_count, hourofday, week_day, checkins, checkins_cat))
 
-# se elimina la variables númerica de los checkins
+# se elimina la variables numérica de los checkins
 data_restaurants$checkins <- NULL
 ```
 
 ## Visualización del Comportamiento de los Datos
 
-### Distribución de cada clase de checkins
+### Distribución de cada clase
 ```{r}
 ggplot(data = data_restaurants, aes(x = checkins_cat, y = ..count.., fill = checkins_cat)) +
   geom_bar() +
@@ -130,7 +140,7 @@ ggplot(data = data_restaurants, aes(x = checkins_cat, y = ..count.., fill = chec
   theme_bw() +
   theme(legend.position = "bottom")
 ```
-## proporción de las clases
+## Proporción de las clases
 ```{r}
 # frecuencia de cada clase
 table(data_restaurants$checkins_cat)
@@ -157,37 +167,39 @@ featurePlot(x = data_restaurants[, 1:4],
             auto.key = list(columns = 3))
 ```
 
-## Resampling
+# División de los datos en Entrenamiento y Prueba
+```{r}
+# Se crean los índices de las observaciones de entrenamiento
+train <- createDataPartition(y = data_restaurants$checkins_cat, p = 0.8, list = FALSE, times = 1)
+# Se particiona el dataset
+data_train <- data_restaurants[train, ]
+data_test  <- data_restaurants[-train, ]
+nrow(data_train) 
+nrow(data_test)
+```
+
+## Remuestreo
+
 Debido a que las clases están altamente desbalanceadas se buscará nivelar las clases con métodos de remuestreo, se tuvieron en cuenta métodos de undersampling como el Random Undersampling pero se descartó ya que la clase minoritaria cuenta con únicamente 24 registros, esto causaba que se perdiera demasiada información.
 De métodos de oversampling se provó con SMOTE y Random Oversampling y se dejó únicamente el Random Oversampling ya que fue el que dio el mejor rendimiento.
 ```{r}
 set.seed(1000)
 # Random Oversampling
-up_dataset <- upSample(x = data_restaurants[, -ncol(data_restaurants)],
+data_train <- upSample(x = data_restaurants[, -ncol(data_restaurants)],
                        y = data_restaurants$checkins_cat)
-up_dataset <- rename(up_dataset, c("checkins_cat" = "Class"))
+data_train <- rename(data_train, c("checkins_cat" = "Class"))
 
 # frecuencia de cada clase después de ser balanceadas
-table(up_dataset$checkins_cat)
+table(data_train$checkins_cat)
 ```
 Se revolvieron los registros.
 ```{r}
 # shuffle the dataframe
-up_dataset <- up_dataset[sample(nrow(up_dataset)),]
+data_train <- data_train[sample(nrow(data_train)),]
+data_test <- data_test[sample(nrow(data_test)),]
 ```
 
-# División de los datos en Entrenamiento y Prueba
-```{r}
-# Se crean los índices de las observaciones de entrenamiento
-train <- createDataPartition(y = up_dataset$checkins_cat, p = 0.8, list = FALSE, times = 1)
-# Se particiona el dataset
-data_train <- up_dataset[train, ]
-data_test  <- up_dataset[-train, ]
-nrow(data_train) 
-nrow(data_test)
-```
 Evaluar la capacidad predictiva de un modelo consiste en comprobar cómo de próximas son sus predicciones a los verdaderos valores de la variable respuesta. Para poder cuantificar de forma correcta este error, se necesita disponer de un conjunto de observaciones, de las que se conozca la variable respuesta, pero que el modelo no haya “visto”, es decir, que no hayan participado en su ajuste. Con esta finalidad, se dividen los datos disponibles en un conjunto de entrenamiento y un conjunto de prueba. En este caso el conjunto de entrenamiento contará con el **80%** de los datos mientras que el de pruebas contará con **20%**.
-
 
 # Creación de los modelos predictivos
 
@@ -196,14 +208,14 @@ Para el caso del entrenaiento con Naive Bayes no se modificará ninguno de sus h
 ```{r}
 modelo_naivebayes <- naive_bayes(formula = checkins_cat ~ .,  data = data_train)
 ```
-Posterior al entremiento del modelo se realizan las pruebas con el conjunto de puebas que se particionó anteriormente.
+Posterior al entrenamiento del modelo se realizan las pruebas con el conjunto de pruebas que se particionó anteriormente.
 ```{r}
 # se lleva a cabo la etapa de pruebas para determinar la capacidad de predicción del modelo
 predictions_nb <- predict(modelo_naivebayes, data_test)
 head(predictions_nb, 25)
 ```
 
-### Métricas del modelo con Random Forest
+### Métricas del modelo con Naive Bayes
 ```{r}
 # métricas de evaluación
 confusion<-confusionMatrix(predictions_nb, data_test[["checkins_cat"]])
@@ -227,12 +239,14 @@ rpart.plot(modelo_dt)
 ```
 
 ### Métricas del modelo con Árbol de Decisión
-Posterior al entremiento del modelo se realizan las pruebas con el conjunto de puebas que se particionó anteriormente.
+Posterior al entrenamiento del modelo se realizan las pruebas con el conjunto de pruebas que se particionó anteriormente.
 ```{r}
 predictions_dt <- predict(modelo_dt, newdata = data_test, type = "class")
 ```
 ```{r}
-confusionMatrix(predictions_dt, data_test[["checkins_cat"]])
+confusion_dt <- confusionMatrix(predictions_dt, data_test[["checkins_cat"]])
+confusion_dt
+confusion_dt[["byClass"]]
 ```
 
 ### Área bajo la curva ROC
@@ -241,7 +255,7 @@ multiclass.roc(as.numeric(predictions_dt), as.numeric(data_test[, "checkins_cat"
 ```
 
 ## Random Forest
-Para el modelo creado a través de Random Forest si se modificará algunos de los hiperparámetros ya que anteriormente se realizó una validación de hiperparámetros donde se evaluó como rinde el modelo segón diferentes valores de los siguientes parametros:
+Para el modelo creado a través de Random Forest si se modificará algunos de los hiperparámetros ya que anteriormente se realizó una validación de hiperparámetros donde se evaluó como rinde el modelo segón diferentes valores de los siguientes parámetros:
 * **min.node.size**: tamaño mínimo que tiene que tener un nodo para poder ser dividido.
 * **splitrule**: criterio de división, el que obtuvo el mejor rendimiento fue Gini Impurity por lo que no se modificará ya que es el criterio por defecto que utiliza el modelo.
 
@@ -262,19 +276,19 @@ En la tabla inferior podemos ver las métricas que posteriormente pasaremos a co
 
 ### Métricas del modelo con Random Forest
 ```{r}
-confusionMatrix(predictions, as.factor(data_test[, "checkins_cat"]), positive = "alta", mode="prec_recall")
-
+confusion_rf <- confusionMatrix(predictions, as.factor(data_test[, "checkins_cat"]), positive = "alta", mode="prec_recall")
+confusion_rf
+confusion_rf[["byClass"]]
 ```
 
 ### Área bajo la curva ROC
 ```{r}
 multiclass.roc(as.numeric(predictions), as.numeric(data_test[, "checkins_cat"]))
 ```
-En la gráfica infeior podemos ver como varió el error según el número de árboles, como se puede observar a partir de los 200 arboles no parecen haber diferencias claras.
+En la gráfica inferior podemos ver como varió el error según el número de árboles, como se puede observar a partir de los 200 arboles no parecen haber diferencias claras.
 ```{r}
 plot(modelo_randforest)
 ```
-
 ```{r}
 plot (randomForest::margin(modelo_randforest))
 ```
@@ -286,12 +300,26 @@ varImpPlot(modelo_randforest)
 ```
 
 # Comparación de lo Modelos
+* En el modelo entrenado con Naive Bayes se ha podido evidenciar el menor desempeño debido a que es modelo más simple y que adicional a esto no se hizo una validación de sus hiperparámetros.
+
+* Es posible que los modelos se vieran afectados debido a la alta repetición de los datos que es causada por el Random Oversampling ya que la clase minoritaria se contaba únicamente con 24 registros, provocando que se genere un overfitting sesgando las métricas de los modelos incluso en fase de pruebas.
+
+* En general, la clase que representa la baja carga laboral, tiende a ser mal clasificada en todos los modelos, además en los modelos de Naive bayes y Decision Tree la clase que tiende a ser peor clasificada es la que representa la carga de trabajo media.
+
+* El modelo entrenado con Random Forest con o sin validar sus hiperparámetros siempre genera un mejor rendimiento, probablemente dado a que es un modelo más robusto.
+
+* Se nota que las características que más influyen en la variables de decisión son las horas del día y el review count, nos tomo por sorpresa que la variable de las estrellas no fuera tan relevante, donde incluso los negocios que recibían mayores cantidades de entradas son los que tienen calificaciones más cercanas a 3.0 y no los que poseen mejores calificaciones.
 
 # Posibles mejoras
 
+* La principal mejora que se podría hacer es estudiar que tanta relación tienen los checkins de la plataforma Yelp con la carga laboral real de los restaurantes.
+
+* La siguiente mejora sería validar la proporción de los datos ya que en este trabajo únicamente utilizamos la proporción 33.3/33.3/33.3 además de validar otros métodos de remuestreo como SMOTE o ROSE para así intentar evitar la lata repetición de los datos.
+
+* Otra de las posibles mejoras es validar las hiperparámetros de los modelos, ya que en este trabajo a la mayoría de los modelos entrenados se les dejaron sus hiperparámetros por defecto.
+
 
 # Referencias
-https://www.cienciadedatos.net/documentos/41_machine_learning_con_r_y_caret#Modelos
-https://www.cienciadedatos.net/documentos/33_arboles_decision_random_forest_gradient_boosting_c50#Random_Forest
-
+* [Machine Learning con R y Caret](https://www.cienciadedatos.net/documentos/41_machine_learning_con_r_y_caret#)
+* [Árboles de decisión, random forest, gradient boosting y C5.0](https://www.cienciadedatos.net/documentos/33_arboles_decision_random_forest_gradient_boosting_c50#Introducci%C3%B3n)
 
