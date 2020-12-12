@@ -1,6 +1,6 @@
 ---
 title: "Taller Business Checkins"
-author: "Manuel Alejandro Castaño Jaramillo"
+authors: "Manuel Alejandro Castaño Jaramillo - Yahaira Hoyos Barrantes - Sebastian Davila Garcia"
 date: "4/12/2020"
 output: html_notebook
 ---
@@ -20,6 +20,7 @@ library(janitor)
 library(ggplot2)
 # reshape2 to melt the correlation matrix
 library(reshape2)
+
 
 # importing business checkin data from yelp
 data = read.csv("../data/business_checkin.csv", header = TRUE, sep = ",")
@@ -166,6 +167,7 @@ library(dplyr)
 
 ## test
 ```{r}
+
 library(caret)
 featurePlot(x = data_restaurants[, 1:3], 
             y = data_restaurants$checkins_cat, 
@@ -183,8 +185,8 @@ table(data_restaurants$checkins_cat)
 
 ## Resampling
 ```{r}
-set.seed(1000) # puede que cambie por el tiempo
-
+  set.seed(1000) # puede que cambie por el tiempo
+library(tidyverse)
 # con oversampling
 up_dataset <- upSample(x = data_restaurants[, -ncol(data_restaurants)],
                        y = data_restaurants$checkins_cat)
@@ -192,4 +194,70 @@ up_dataset <- rename(up_dataset, c("checkins_cat" = "Class"))
 table(up_dataset$checkins_cat)
 
 ```
+
+
+
+
+```{r}
+#Implementacion de Naïve Bayes
+# shuffle del data frame y eliminar checkins
+up_dataset <- up_dataset[sample(nrow(up_dataset)),]
+up_dataset$checkins <- NULL
+```
+
+
+
+```{r}
+#Sets de entrenamiento y prueba
+T_datos_entrenamiento<-nrow(up_dataset)*0.8
+
+# Muestra de datos de entrenamiento: Tomar filas desde la 1 hasta el tamaño de la muestra.
+datos_entrenamiento<- up_dataset[1:T_datos_entrenamiento,]
+
+datos_pruebas<-up_dataset[(T_datos_entrenamiento+1):nrow(up_dataset),]
+```
+
+
+
+```{r}
+# se desarrolla el modelo a partir de los datos de entrenamiento
+library(naivebayes)
+modelo_naivebayes <- naive_bayes(formula = checkins_cat ~ .,  data = datos_entrenamiento)
+```
+
+
+```{r}
+# se lleva a cabo la etapa de pruebas para determinar la capacidad de prediccion del modelo
+prediccion <- predict(modelo_naivebayes, datos_pruebas)
+head(prediccion, 25)
+
+# Metricas de evaluacion
+confusion<-confusionMatrix(prediccion, datos_pruebas[["checkins_cat"]])
+confusion
+confusion[["byClass"]]
+
+library(pROC)
+auc(as.numeric(prediccion), as.numeric(datos_pruebas[["checkins_cat"]]))
+
+```
+
+
+
+
+
+```{r}
+install.packages("rpart")
+install.packages("rpart.plot")
+library(rpart)
+library(rpart.plot)
+
+arbol_1 <- rpart(formula = checkins_cat ~ ., data = datos_entrenamiento)
+
+rpart.plot(arbol_1)
+
+prediccion_1 <- predict(arbol_1, newdata = datos_pruebas, type = "class")
+confusionMatrix(prediccion_1, datos_pruebas[["checkins_cat"]])
+```
+
+
 
